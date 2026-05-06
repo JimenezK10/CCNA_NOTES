@@ -6,21 +6,22 @@
 
 Understand what happens when traffic moves:
 
-* Between networks
-* Through routers
-* Using ARP, switching, and routing
+* From one network to another
+* Across routers
+* Using ARP, switching, and routing decisions
 
-Focus is on **process**, not commands.
+This is about **process**, not commands.
 
 ---
 
-## MAC Addresses on Interfaces
+## MAC Addresses (Layer 2)
 
-* Every network interface has a MAC address
-* Also called **BIA (Burned-In Address)**
-* Used at Layer 2
+* Every interface has a MAC address (BIA)
+* Used only for **local delivery (LAN)**
 
-MAC addresses are only relevant **within a local network (LAN)**.
+```text
+MAC = local delivery only
+```
 
 ---
 
@@ -28,11 +29,9 @@ MAC addresses are only relevant **within a local network (LAN)**.
 
 ### Why ARP Exists
 
-* Devices communicate using IP
-* Ethernet requires MAC
-* ARP maps:
+Devices know IP addresses, but Ethernet requires MAC addresses.
 
-```text id="g3qv9p"
+```text
 IP → MAC
 ```
 
@@ -43,60 +42,92 @@ IP → MAC
 * Sent when MAC is unknown
 * Broadcast frame
 
-```text id="trbnry"
+```text
 Destination MAC = ffff.ffff.ffff
 ```
 
-* Sent to all devices in the LAN
-* Not forwarded by routers
+* Only within the **local LAN**
+* Never crosses a router
 
 ---
 
 ## ARP Reply
 
-* Sent by the device that owns the IP
-* Unicast
+* Unicast response
+* Sent back to requester
 
 After this:
 
-```text id="q7q09l"
-ARP table is updated
+```text
+ARP table updated
 ```
 
 ---
 
-## Sending to a Remote Network
+## Sending to a Remote Network (Host)
 
-When a host sends traffic to another network:
+### Step 1 — Layer 3 Decision
 
-### Layer 3 Decision
-
-```text id="x2apwy"
-Destination not local → send to default gateway
+```text
+Destination not in subnet → send to default gateway
 ```
 
 ---
 
-### Layer 2 Encapsulation
+### Step 2 — Layer 2 Frame
 
-* Source MAC = host
-* Destination MAC = **router (default gateway)**
+```text
+Source MAC = host
+Destination MAC = router (gateway)
+```
 
 ---
 
 ## At the Router
 
-When a router receives a frame:
+When the router receives the frame:
 
 1. Removes Layer 2 header
 2. Checks destination IP
 3. Searches routing table
 4. Selects best match
 
-If no match:
+---
 
-```text id="2c8w3n"
-Packet is dropped
+## Routing Decision (Important)
+
+```text
+Match destination →
+    Choose longest prefix →
+        Identify next-hop
+```
+
+---
+
+## How Router Determines Interface (Critical)
+
+If route is:
+
+```bash
+ip route 192.168.1.0 255.255.255.0 10.0.12.1
+```
+
+Router does:
+
+```text
+1. Match destination network
+2. See next-hop IP (10.0.12.1)
+3. Look up next-hop in routing table
+4. Determine outgoing interface
+```
+
+---
+
+## Key Concept
+
+```text
+Routing decides WHERE
+ARP decides HOW
 ```
 
 ---
@@ -105,14 +136,25 @@ Packet is dropped
 
 If router does not know next-hop MAC:
 
-* Sends ARP request
-* Receives ARP reply
-* Stores result
+```text
+Send ARP request on the selected interface ONLY
+```
 
-Then:
+Not:
 
-* Builds new frame
-* Sends packet forward
+* All interfaces ❌
+* Entire network ❌
+
+---
+
+## Frame Rebuild
+
+Router builds a new frame:
+
+```text
+Source MAC = router outgoing interface
+Destination MAC = next-hop device
+```
 
 ---
 
@@ -120,25 +162,19 @@ Then:
 
 ### Packet (Layer 3)
 
-* Source IP → does not change
-* Destination IP → does not change
+```text
+Source IP → stays the same
+Destination IP → stays the same
+```
 
 ---
 
 ### Frame (Layer 2)
 
-* Source MAC → changes every hop
-* Destination MAC → changes every hop
-
----
-
-## Router Behavior
-
-Routers:
-
-* Remove incoming frame
-* Make routing decision
-* Build new frame
+```text
+Source MAC → changes every hop
+Destination MAC → changes every hop
+```
 
 ---
 
@@ -150,57 +186,83 @@ Switches:
 * Do not inspect IP
 * Do not modify frames
 
-If destination MAC unknown:
+If destination unknown:
 
-```text id="ntkkxa"
+```text
 Flood
+```
+
+---
+
+## Full Packet Flow (End-to-End)
+
+```text
+PC →
+    ARP for gateway →
+        send frame to router →
+
+Router →
+    remove frame →
+    check routing table →
+    determine next-hop →
+    ARP if needed →
+    build new frame →
+    forward →
+
+Repeat per router →
+
+Final router →
+    ARP for destination host →
+    send frame →
+
+Destination receives packet
 ```
 
 ---
 
 ## Key Rules
 
-```text id="d9t0nf"
+```text
 IP = end-to-end identity
-MAC = local delivery only
+MAC = hop-to-hop delivery
 ```
 
 ---
 
-```text id="vcz6yj"
+```text
 Routers rewrite frames
 Packets stay the same
 ```
 
 ---
 
-```text id="k0s97c"
+```text
 ARP is local only
-Never crosses a router
+Occurs per hop
 ```
 
 ---
 
 ## Key Takeaways
 
-* ARP resolves IP to MAC on a local network 
-* Default gateway is used for remote communication
-* Routers make decisions based on destination IP
-* MAC addresses change at every hop
-* IP addresses remain constant end-to-end
+* ARP resolves IP to MAC on each local segment
+* Routers make decisions using destination IP
+* Router determines interface via routing table (recursive lookup)
+* ARP is only sent on the selected interface
+* MAC changes every hop, IP does not
 
 ---
 
 ## Self-Check
 
-1. What changes at every hop?
+1. What determines the outgoing interface?
+   → Routing table (next-hop lookup)
+
+2. Where is ARP sent?
+   → Only on the selected interface
+
+3. What changes every hop?
    → MAC address
 
-2. What stays the same end-to-end?
+4. What stays the same end-to-end?
    → IP address
-
-3. When is ARP used?
-   → When MAC is unknown
-
-4. Does ARP cross routers?
-   → No
